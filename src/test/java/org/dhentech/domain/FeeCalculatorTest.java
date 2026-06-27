@@ -20,17 +20,14 @@ class FeeCalculatorTest {
         today = LocalDate.now();
     }
 
-    // --- same day (0 days) ---
 
     @Test
     void shouldApplyFixedPlusPercentWhenSameDay() {
         BigDecimal amount = new BigDecimal("1000.00");
         BigDecimal fee = calculator.calculate(amount, today, today);
-        // 3.00 + 2.5% of 1000 = 3.00 + 25.00 = 28.00
         assertEquals(new BigDecimal("28.00"), fee);
     }
 
-    // --- 1 to 10 days ---
 
     @Test
     void shouldApplyFixedTwelveWhenOneDayAhead() {
@@ -44,13 +41,11 @@ class FeeCalculatorTest {
         assertEquals(new BigDecimal("12.00"), fee);
     }
 
-    // --- 11 to 20 days ---
 
     @Test
     void shouldApplyEightPointTwoPercentWhenElevenDaysAhead() {
         BigDecimal amount = new BigDecimal("1000.00");
         BigDecimal fee = calculator.calculate(amount, today, today.plusDays(11));
-        // 8.2% of 1000 = 82.00
         assertEquals(new BigDecimal("82.00"), fee);
     }
 
@@ -61,13 +56,11 @@ class FeeCalculatorTest {
         assertEquals(new BigDecimal("82.00"), fee);
     }
 
-    // --- 21 to 30 days ---
 
     @Test
     void shouldApplySixPointNinePercentWhenTwentyOneDaysAhead() {
         BigDecimal amount = new BigDecimal("1000.00");
         BigDecimal fee = calculator.calculate(amount, today, today.plusDays(21));
-        // 6.9% of 1000 = 69.00
         assertEquals(new BigDecimal("69.00"), fee);
     }
 
@@ -78,13 +71,11 @@ class FeeCalculatorTest {
         assertEquals(new BigDecimal("69.00"), fee);
     }
 
-    // --- 31 to 40 days ---
 
     @Test
     void shouldApplyFourPointSevenPercentWhenThirtyOneDaysAhead() {
         BigDecimal amount = new BigDecimal("1000.00");
         BigDecimal fee = calculator.calculate(amount, today, today.plusDays(31));
-        // 4.7% of 1000 = 47.00
         assertEquals(new BigDecimal("47.00"), fee);
     }
 
@@ -95,13 +86,11 @@ class FeeCalculatorTest {
         assertEquals(new BigDecimal("47.00"), fee);
     }
 
-    // --- 41 to 50 days ---
 
     @Test
     void shouldApplyOnePointSevenPercentWhenFortyOneDaysAhead() {
         BigDecimal amount = new BigDecimal("1000.00");
         BigDecimal fee = calculator.calculate(amount, today, today.plusDays(41));
-        // 1.7% of 1000 = 17.00
         assertEquals(new BigDecimal("17.00"), fee);
     }
 
@@ -112,7 +101,6 @@ class FeeCalculatorTest {
         assertEquals(new BigDecimal("17.00"), fee);
     }
 
-    // --- edge cases: no applicable fee ---
 
     @Test
     void shouldThrowWhenFiftyOneDaysAhead() {
