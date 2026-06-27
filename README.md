@@ -11,6 +11,7 @@ REST API para agendamento de transferências financeiras, desenvolvida como aval
 | Spring Data JPA | 2.7.18 |
 | Spring Validation | 2.7.18 |
 | H2 Database | em memória |
+| springdoc-openapi-ui | 1.7.0 |
 | JUnit 5 | 5.8.x |
 | Mockito | 4.x |
 | Maven | 3.x |
@@ -29,6 +30,15 @@ mvn spring-boot:run
 ```
 
 A API estará disponível em `http://localhost:8080`.
+
+### Documentação interativa (Swagger UI)
+
+| Recurso | URL |
+|---|---|
+| Swagger UI | `http://localhost:8080/swagger-ui.html` |
+| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
+
+### Console do H2
 
 O console do H2 pode ser acessado em `http://localhost:8080/h2-console` com as credenciais:
 - **JDBC URL:** `jdbc:h2:mem:transferdb`
