@@ -3,9 +3,11 @@ package org.dhentech.application;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.application.dto.FeeSimulationResponseDto;
+import org.dhentech.application.dto.TransferUpdateRequestDto;
 import org.dhentech.domain.TransferStatus;
 import org.dhentech.domain.exception.NoApplicableFeeException;
 import org.dhentech.domain.exception.TransferCancellationException;
+import org.dhentech.domain.exception.TransferEditException;
 import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
 import org.dhentech.infrastructure.repository.TransferRepository;
@@ -188,6 +190,67 @@ class TransferServiceTest {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(TransferNotFoundException.class, () -> service.cancel(99L));
+    }
+
+    @Test
+    void shouldUpdateAmountAndRecalculateFee() throws Exception {
+        TransferEntity entity = buildEntityWithDate(1L, new BigDecimal("82.00"), LocalDate.now().plusDays(15));
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+
+        TransferUpdateRequestDto updateRequest = new TransferUpdateRequestDto();
+        setField(updateRequest, "amount", new BigDecimal("2000.00"));
+
+        service.update(1L, updateRequest);
+
+        verify(repository, times(1)).save(entity);
+        assertEquals(new BigDecimal("164.00"), entity.getFee());
+    }
+
+    @Test
+    void shouldUpdateTransferDateAndRecalculateFee() throws Exception {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+
+        TransferUpdateRequestDto updateRequest = new TransferUpdateRequestDto();
+        setField(updateRequest, "transferDate", LocalDate.now().plusDays(15));
+
+        service.update(1L, updateRequest);
+
+        assertEquals(new BigDecimal("82.00"), entity.getFee());
+    }
+
+    @Test
+    void shouldThrowWhenEditingCancelledTransfer() throws Exception {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        entity.cancel();
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferUpdateRequestDto updateRequest = new TransferUpdateRequestDto();
+        setField(updateRequest, "amount", new BigDecimal("2000.00"));
+
+        assertThrows(TransferEditException.class, () -> service.update(1L, updateRequest));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenEditingTransferAfterExecutionDate() throws Exception {
+        TransferEntity entity = buildEntityWithDate(1L, new BigDecimal("12.00"), LocalDate.now());
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferUpdateRequestDto updateRequest = new TransferUpdateRequestDto();
+        setField(updateRequest, "amount", new BigDecimal("2000.00"));
+
+        assertThrows(TransferEditException.class, () -> service.update(1L, updateRequest));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowTransferNotFoundWhenEditingNonExistentTransfer() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TransferNotFoundException.class, () -> service.update(99L, new TransferUpdateRequestDto()));
     }
 
     @Test

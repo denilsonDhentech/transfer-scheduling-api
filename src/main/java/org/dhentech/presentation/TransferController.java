@@ -2,9 +2,13 @@ package org.dhentech.presentation;
 
 import org.dhentech.application.TransferService;
 import org.dhentech.application.dto.FeeSimulationResponseDto;
+import org.dhentech.application.dto.PagedTransferResponseDto;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
+import org.dhentech.application.dto.TransferUpdateRequestDto;
+import org.dhentech.domain.TransferStatus;
 import org.dhentech.infrastructure.export.TransferCsvExporter;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -12,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -49,8 +54,21 @@ public class TransferController {
     }
 
     @GetMapping
-    public List<TransferResponseDto> findAll() {
-        return service.findAll();
+    public PagedTransferResponseDto findAll(
+            @RequestParam(required = false) TransferStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String sourceAccount,
+            @RequestParam(required = false) String destinationAccount,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return service.findPaged(status, from, to, sourceAccount, destinationAccount, page, size);
+    }
+
+    @PatchMapping("/{id}")
+    public TransferResponseDto update(@PathVariable Long id,
+                                      @Valid @RequestBody TransferUpdateRequestDto request) {
+        return service.update(id, request);
     }
 
     @GetMapping("/export")
