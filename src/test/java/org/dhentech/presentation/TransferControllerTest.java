@@ -17,6 +17,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -137,6 +139,36 @@ class TransferControllerTest {
         mockMvc.perform(get("/transfers/{id}", 999L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void shouldExportCsvWithCorrectHeadersAndContent() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
+        mockMvc.perform(post("/transfers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+        String csv = mockMvc.perform(get("/transfers/export"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("text/csv")))
+                .andExpect(header().string("Content-Disposition", containsString("attachment")))
+                .andExpect(header().string("Content-Disposition", containsString("agendamentos.csv")))
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(csv.startsWith("id,sourceAccount,destinationAccount,amount,fee,transferDate,schedulingDate,status\n"));
+        assertTrue(csv.contains("1234567890"));
+        assertTrue(csv.contains("PENDING"));
+    }
+
+    @Test
+    void shouldExportCsvWithOnlyHeaderWhenNoTransfers() throws Exception {
+        String csv = mockMvc.perform(get("/transfers/export"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(csv.startsWith("id,sourceAccount,destinationAccount,amount,fee,transferDate,schedulingDate,status\n"));
+        assertFalse(csv.contains("\n1"));
     }
 
     @Test
