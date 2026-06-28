@@ -3,6 +3,7 @@ package org.dhentech.application;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.domain.FeeCalculator;
+import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
 import org.dhentech.infrastructure.repository.TransferRepository;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,12 @@ public class TransferService {
         );
 
         return TransferResponseDto.from(repository.save(entity));
+    }
+
+    public TransferResponseDto findById(Long id) {
+        return repository.findById(id)
+                .map(TransferResponseDto::from)
+                .orElseThrow(() -> new TransferNotFoundException(id));
     }
 
     public List<TransferResponseDto> findAll() {

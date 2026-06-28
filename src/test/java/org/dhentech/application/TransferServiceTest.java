@@ -3,6 +3,7 @@ package org.dhentech.application;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.domain.exception.NoApplicableFeeException;
+import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
 import org.dhentech.infrastructure.repository.TransferRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -68,6 +70,24 @@ class TransferServiceTest {
 
         assertThrows(NoApplicableFeeException.class, () -> service.schedule(request));
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnTransferWhenFoundById() {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferResponseDto response = service.findById(1L);
+
+        assertEquals(1L, response.getId());
+        assertEquals(new BigDecimal("12.00"), response.getFee());
+    }
+
+    @Test
+    void shouldThrowTransferNotFoundWhenIdDoesNotExist() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TransferNotFoundException.class, () -> service.findById(99L));
     }
 
     @Test
