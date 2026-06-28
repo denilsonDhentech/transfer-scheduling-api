@@ -74,10 +74,77 @@ Regras de validação:
 - `amount`: valor positivo
 - `transferDate`: formato ISO 8601 (`yyyy-MM-dd`), deve estar entre hoje e 50 dias à frente
 
+Retorna `201 Created` com o agendamento criado, incluindo `fee` calculada e `status: PENDING`.
+
+### Simular taxa
+
+```
+POST /transfers/simulate
+Content-Type: application/json
+```
+
+Mesmo body do agendamento. Calcula e retorna a taxa **sem persistir** nenhum dado.
+
+```json
+{
+  "fee": 12.00,
+  "days": 7
+}
+```
+
+Retorna `400` se a data for inválida (passado ou acima de 50 dias).
+
 ### Listar agendamentos
 
 ```
 GET /transfers
+```
+
+Retorna todos os agendamentos com o campo `status` derivado em tempo de resposta:
+
+| Status | Condição |
+|--------|----------|
+| `PENDING` | `transferDate` ainda no futuro |
+| `EXECUTED` | `transferDate <= hoje` |
+| `CANCELLED` | cancelado via PATCH |
+
+### Buscar agendamento por ID
+
+```
+GET /transfers/{id}
+```
+
+Retorna `200` com o agendamento ou `404` se não encontrado.
+
+### Cancelar agendamento
+
+```
+PATCH /transfers/{id}/cancel
+```
+
+Sem body. Retorna `204 No Content` em caso de sucesso.
+
+| Situação | Resposta |
+|----------|----------|
+| ID não existe | `404 Not Found` |
+| Já cancelado | `422 Unprocessable Entity` |
+| `transferDate <= hoje` | `422 Unprocessable Entity` |
+| Válido | `204 No Content` |
+
+### Exportar extrato em CSV
+
+```
+GET /transfers/export
+```
+
+Retorna `200` com o arquivo CSV para download.
+
+- `Content-Type: text/csv; charset=UTF-8`
+- `Content-Disposition: attachment; filename="agendamentos.csv"`
+
+```csv
+id,sourceAccount,destinationAccount,amount,fee,transferDate,schedulingDate,status
+1,1234567890,0987654321,1000.00,12.00,2026-07-10,2026-06-28,PENDING
 ```
 
 ## Tabela de taxas
@@ -104,9 +171,9 @@ presentation → application → domain
                            ↘ infrastructure
 ```
 
-- **`domain`** — regra de cálculo da taxa (`FeeCalculator`) e exceção de domínio (`NoApplicableFeeException`). Sem dependência do Spring — testável em isolamento puro.
-- **`application`** — caso de uso (`TransferService`) e DTOs. Orquestra domínio e repositório sem expor entidades JPA na API.
-- **`infrastructure`** — entidade JPA (`TransferEntity`) e repositório Spring Data (`TransferRepository`).
+- **`domain`** — regras de negócio (`FeeCalculator`, `TransferStatus`) e exceções de domínio (`NoApplicableFeeException`, `TransferNotFoundException`, `TransferCancellationException`). Sem dependência do Spring — testável em isolamento puro.
+- **`application`** — casos de uso (`TransferService`: agendar, cancelar, simular, listar, buscar por ID) e DTOs. Orquestra domínio e repositório sem expor entidades JPA na API.
+- **`infrastructure`** — entidade JPA (`TransferEntity`), repositório Spring Data (`TransferRepository`) e serialização (`TransferCsvExporter`).
 - **`presentation`** — controller REST (`TransferController`) e handler global de exceções (`GlobalExceptionHandler`).
 
 ### Principais escolhas
@@ -114,13 +181,17 @@ presentation → application → domain
 - **`BigDecimal` para valores monetários** — evita imprecisão de ponto flutuante inerente a `double`/`float`.
 - **Table-driven no `FeeCalculator`** — as faixas de taxa são declaradas como dados (`List<FeeRule>`), eliminando chain de `if` e tornando trivial adicionar ou remover faixas.
 - **DTOs desacoplados das entidades** — a entidade JPA nunca é exposta diretamente na API, preservando o contrato REST independente do modelo de persistência.
+- **`status` derivado em tempo de resposta** — `EXECUTED` não é persistido; é calculado no `TransferResponseDto` com base em `transferDate <= hoje`. Apenas `PENDING` e `CANCELLED` são gravados no banco, evitando a necessidade de job de atualização em background.
+- **Cancelamento via PATCH, não DELETE** — segue o padrão de APIs financeiras (Stripe, Open Finance Brasil): o registro é preservado com `status = CANCELLED` para fins de auditoria. HTTP DELETE implicaria remoção do recurso.
+- **`TransferCsvExporter` em infraestrutura** — serialização CSV extraída do `TransferService` por SRP. O service conhece apenas casos de uso; o exporter conhece apenas formato de saída.
 - **H2 em memória** — banco volátil configurado com `create-drop`, suficiente para o escopo da avaliação e sem necessidade de infraestrutura externa.
 
 ### Cobertura de testes
 
 | Camada | Quantidade | Tipo |
 |---|---|---|
-| Domínio | 13 | Unitário |
-| Aplicação | 4 | Unitário (Mockito) |
-| Apresentação | 7 | Integração (MockMvc + H2) |
-| **Total** | **24** | |
+| Domínio (`FeeCalculatorTest`) | 13 | Unitário |
+| Aplicação (`TransferServiceTest`) | 16 | Unitário (Mockito) |
+| Infraestrutura (`TransferCsvExporterTest`) | 3 | Unitário |
+| Apresentação (`TransferControllerTest`) | 19 | Integração (MockMvc + H2) |
+| **Total** | **51** | |
