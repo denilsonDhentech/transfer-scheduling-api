@@ -48,7 +48,8 @@ class TransferControllerTest {
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.fee").value(12.0))
                 .andExpect(jsonPath("$.sourceAccount").value("1234567890"))
-                .andExpect(jsonPath("$.schedulingDate").value(LocalDate.now().toString()));
+                .andExpect(jsonPath("$.schedulingDate").value(LocalDate.now().toString()))
+                .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     @Test
@@ -117,6 +118,18 @@ class TransferControllerTest {
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.sourceAccount").value("1234567890"))
                 .andExpect(jsonPath("$.fee").value(12.0));
+    }
+
+    @Test
+    void shouldReturnExecutedStatusWhenTransferDateIsToday() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now());
+
+        mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
     }
 
     @Test

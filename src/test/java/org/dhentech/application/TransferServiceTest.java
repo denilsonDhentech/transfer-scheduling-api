@@ -2,6 +2,7 @@ package org.dhentech.application;
 
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
+import org.dhentech.domain.TransferStatus;
 import org.dhentech.domain.exception.NoApplicableFeeException;
 import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
@@ -84,6 +85,37 @@ class TransferServiceTest {
     }
 
     @Test
+    void shouldReturnPendingStatusForFutureTransfer() {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferResponseDto response = service.findById(1L);
+
+        assertEquals(TransferStatus.PENDING, response.getStatus());
+    }
+
+    @Test
+    void shouldReturnExecutedStatusWhenTransferDateIsToday() {
+        TransferEntity entity = buildEntityWithDate(1L, new BigDecimal("12.00"), LocalDate.now());
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferResponseDto response = service.findById(1L);
+
+        assertEquals(TransferStatus.EXECUTED, response.getStatus());
+    }
+
+    @Test
+    void shouldReturnCancelledStatusWhenTransferIsCancelled() {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        entity.cancel();
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        TransferResponseDto response = service.findById(1L);
+
+        assertEquals(TransferStatus.CANCELLED, response.getStatus());
+    }
+
+    @Test
     void shouldThrowTransferNotFoundWhenIdDoesNotExist() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
@@ -103,10 +135,14 @@ class TransferServiceTest {
     }
 
     private TransferEntity buildEntity(Long id, BigDecimal fee) {
+        return buildEntityWithDate(id, fee, LocalDate.now().plusDays(5));
+    }
+
+    private TransferEntity buildEntityWithDate(Long id, BigDecimal fee, LocalDate transferDate) {
         TransferEntity entity = new TransferEntity(
                 "1234567890", "0987654321",
                 new BigDecimal("1000.00"), fee,
-                LocalDate.now().plusDays(5), LocalDate.now()
+                transferDate, LocalDate.now()
         );
         setFieldSilently(entity, "id", id);
         return entity;

@@ -1,5 +1,7 @@
 package org.dhentech.infrastructure.entity;
 
+import org.dhentech.domain.TransferStatus;
+
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,6 +32,10 @@ public class TransferEntity {
     @Column(name = "scheduling_date", nullable = false)
     private LocalDate schedulingDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private TransferStatus status;
+
     public TransferEntity() {
     }
 
@@ -42,6 +48,11 @@ public class TransferEntity {
         this.fee = fee;
         this.transferDate = transferDate;
         this.schedulingDate = schedulingDate;
+        this.status = TransferStatus.PENDING;
+    }
+
+    public void cancel() {
+        this.status = TransferStatus.CANCELLED;
     }
 
     public Long getId() { return id; }
@@ -57,4 +68,6 @@ public class TransferEntity {
     public LocalDate getTransferDate() { return transferDate; }
 
     public LocalDate getSchedulingDate() { return schedulingDate; }
+
+    public TransferStatus getStatus() { return status; }
 }

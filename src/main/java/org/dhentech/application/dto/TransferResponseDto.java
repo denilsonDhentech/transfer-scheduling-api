@@ -1,5 +1,6 @@
 package org.dhentech.application.dto;
 
+import org.dhentech.domain.TransferStatus;
 import org.dhentech.infrastructure.entity.TransferEntity;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ public class TransferResponseDto {
     private BigDecimal fee;
     private LocalDate transferDate;
     private LocalDate schedulingDate;
+    private TransferStatus status;
 
     private TransferResponseDto() {
     }
@@ -27,7 +29,18 @@ public class TransferResponseDto {
         dto.fee = entity.getFee();
         dto.transferDate = entity.getTransferDate();
         dto.schedulingDate = entity.getSchedulingDate();
+        dto.status = resolveStatus(entity);
         return dto;
+    }
+
+    private static TransferStatus resolveStatus(TransferEntity entity) {
+        if (entity.getStatus() == TransferStatus.CANCELLED) {
+            return TransferStatus.CANCELLED;
+        }
+        if (!entity.getTransferDate().isAfter(LocalDate.now())) {
+            return TransferStatus.EXECUTED;
+        }
+        return TransferStatus.PENDING;
     }
 
     public Long getId() { return id; }
@@ -43,4 +56,6 @@ public class TransferResponseDto {
     public LocalDate getTransferDate() { return transferDate; }
 
     public LocalDate getSchedulingDate() { return schedulingDate; }
+
+    public TransferStatus getStatus() { return status; }
 }
