@@ -94,13 +94,41 @@ Mesmo body do agendamento. Calcula e retorna a taxa **sem persistir** nenhum dad
 
 Retorna `400` se a data for inválida (passado ou acima de 50 dias).
 
-### Listar agendamentos
+### Listar agendamentos (com filtros e paginação)
 
 ```
 GET /transfers
 ```
 
-Retorna todos os agendamentos com o campo `status` derivado em tempo de resposta:
+Todos os parâmetros são opcionais e combináveis:
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `status` | `PENDING` \| `EXECUTED` \| `CANCELLED` | Filtra pelo status |
+| `from` | `yyyy-MM-dd` | `transferDate >= from` |
+| `to` | `yyyy-MM-dd` | `transferDate <= to` |
+| `sourceAccount` | string (10 dígitos) | Filtra pela conta de origem |
+| `destinationAccount` | string (10 dígitos) | Filtra pela conta de destino |
+| `page` | inteiro (default: `0`) | Página (zero-indexed) |
+| `size` | inteiro (default: `10`) | Itens por página |
+
+Exemplo:
+```
+GET /transfers?status=PENDING&from=2026-07-01&to=2026-07-31&page=0&size=10
+```
+
+Retorno paginado:
+```json
+{
+  "content": [...],
+  "page": 0,
+  "size": 10,
+  "totalElements": 42,
+  "totalPages": 5
+}
+```
+
+O campo `status` é derivado em tempo de resposta:
 
 | Status | Condição |
 |--------|----------|
@@ -130,6 +158,30 @@ Sem body. Retorna `204 No Content` em caso de sucesso.
 | Já cancelado | `422 Unprocessable Entity` |
 | `transferDate <= hoje` | `422 Unprocessable Entity` |
 | Válido | `204 No Content` |
+
+### Editar agendamento
+
+```
+PATCH /transfers/{id}
+Content-Type: application/json
+```
+
+Permite corrigir `amount` e/ou `transferDate` de um agendamento ainda `PENDING`. A taxa é recalculada automaticamente. Enviar apenas os campos que mudaram.
+
+```json
+{
+  "amount": 2000.00,
+  "transferDate": "2026-07-20"
+}
+```
+
+| Situação | Resposta |
+|----------|----------|
+| Válido | `200` com `TransferResponse` atualizado e nova `fee` |
+| ID não existe | `404 Not Found` |
+| `status == CANCELLED` | `422 Unprocessable Entity` |
+| `transferDate <= hoje` | `422 Unprocessable Entity` |
+| Data ou valor fora do intervalo de taxas | `400 Bad Request` |
 
 ### Exportar extrato em CSV
 
@@ -171,9 +223,9 @@ presentation → application → domain
                            ↘ infrastructure
 ```
 
-- **`domain`** — regras de negócio (`FeeCalculator`, `TransferStatus`) e exceções de domínio (`NoApplicableFeeException`, `TransferNotFoundException`, `TransferCancellationException`). Sem dependência do Spring — testável em isolamento puro.
-- **`application`** — casos de uso (`TransferService`: agendar, cancelar, simular, listar, buscar por ID) e DTOs. Orquestra domínio e repositório sem expor entidades JPA na API.
-- **`infrastructure`** — entidade JPA (`TransferEntity`), repositório Spring Data (`TransferRepository`) e serialização (`TransferCsvExporter`).
+- **`domain`** — regras de negócio (`FeeCalculator`, `TransferStatus`) e exceções de domínio (`NoApplicableFeeException`, `TransferNotFoundException`, `TransferCancellationException`, `TransferEditException`). Sem dependência do Spring — testável em isolamento puro.
+- **`application`** — casos de uso (`TransferService`: agendar, editar, cancelar, simular, listar com filtros/paginação, buscar por ID) e DTOs. Orquestra domínio e repositório sem expor entidades JPA na API.
+- **`infrastructure`** — entidade JPA (`TransferEntity`), repositório Spring Data com `JpaSpecificationExecutor` (`TransferRepository`), filtros dinâmicos (`TransferSpecification`) e serialização (`TransferCsvExporter`).
 - **`presentation`** — controller REST (`TransferController`) e handler global de exceções (`GlobalExceptionHandler`).
 
 ### Principais escolhas
@@ -191,7 +243,7 @@ presentation → application → domain
 | Camada | Quantidade | Tipo |
 |---|---|---|
 | Domínio (`FeeCalculatorTest`) | 13 | Unitário |
-| Aplicação (`TransferServiceTest`) | 16 | Unitário (Mockito) |
+| Aplicação (`TransferServiceTest`) | 21 | Unitário (Mockito) |
 | Infraestrutura (`TransferCsvExporterTest`) | 3 | Unitário |
-| Apresentação (`TransferControllerTest`) | 19 | Integração (MockMvc + H2) |
-| **Total** | **51** | |
+| Apresentação (`TransferControllerTest`) | 26 | Integração (MockMvc + H2) |
+| **Total** | **63** | |
