@@ -55,6 +55,12 @@ public class TransferEntity {
         this.status = TransferStatus.CANCELLED;
     }
 
+    public void update(BigDecimal amount, BigDecimal fee, LocalDate transferDate) {
+        this.amount = amount;
+        this.fee = fee;
+        this.transferDate = transferDate;
+    }
+
     public Long getId() { return id; }
 
     public String getSourceAccount() { return sourceAccount; }
