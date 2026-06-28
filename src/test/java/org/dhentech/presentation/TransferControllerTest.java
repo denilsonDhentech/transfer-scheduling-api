@@ -140,6 +140,64 @@ class TransferControllerTest {
     }
 
     @Test
+    void shouldCancelTransferAndReturn204() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
+        String response = mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn().getResponse().getContentAsString();
+
+        Long id = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(patch("/transfers/{id}/cancel", id))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/transfers/{id}", id))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void shouldReturn422WhenCancellingAlreadyCancelledTransfer() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
+        String response = mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn().getResponse().getContentAsString();
+
+        Long id = objectMapper.readTree(response).get("id").asLong();
+        mockMvc.perform(patch("/transfers/{id}/cancel", id));
+
+        mockMvc.perform(patch("/transfers/{id}/cancel", id))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void shouldReturn422WhenCancellingTransferAfterExecutionDate() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now());
+        String response = mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn().getResponse().getContentAsString();
+
+        Long id = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(patch("/transfers/{id}/cancel", id))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void shouldReturn404WhenCancellingNonExistentTransfer() throws Exception {
+        mockMvc.perform(patch("/transfers/{id}/cancel", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
     void shouldReturnEmptyListWhenNoTransfersScheduled() throws Exception {
         mockMvc.perform(get("/transfers"))
                 .andExpect(status().isOk())

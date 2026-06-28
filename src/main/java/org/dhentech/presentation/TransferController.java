@@ -30,6 +30,12 @@ public class TransferController {
         return service.findById(id);
     }
 
+    @PatchMapping("/{id}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancel(@PathVariable Long id) {
+        service.cancel(id);
+    }
+
     @GetMapping
     public List<TransferResponseDto> findAll() {
         return service.findAll();

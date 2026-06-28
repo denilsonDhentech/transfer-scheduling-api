@@ -3,6 +3,8 @@ package org.dhentech.application;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.domain.FeeCalculator;
+import org.dhentech.domain.TransferStatus;
+import org.dhentech.domain.exception.TransferCancellationException;
 import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
 import org.dhentech.infrastructure.repository.TransferRepository;
@@ -44,6 +46,22 @@ public class TransferService {
         return repository.findById(id)
                 .map(TransferResponseDto::from)
                 .orElseThrow(() -> new TransferNotFoundException(id));
+    }
+
+    public void cancel(Long id) {
+        TransferEntity entity = repository.findById(id)
+                .orElseThrow(() -> new TransferNotFoundException(id));
+
+        if (entity.getStatus() == TransferStatus.CANCELLED) {
+            throw new TransferCancellationException("Transfer is already cancelled.");
+        }
+
+        if (!entity.getTransferDate().isAfter(LocalDate.now())) {
+            throw new TransferCancellationException("Transfer cannot be cancelled after execution date.");
+        }
+
+        entity.cancel();
+        repository.save(entity);
     }
 
     public List<TransferResponseDto> findAll() {

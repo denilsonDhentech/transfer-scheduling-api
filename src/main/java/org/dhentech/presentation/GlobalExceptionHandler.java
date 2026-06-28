@@ -1,6 +1,7 @@
 package org.dhentech.presentation;
 
 import org.dhentech.domain.exception.NoApplicableFeeException;
+import org.dhentech.domain.exception.TransferCancellationException;
 import org.dhentech.domain.exception.TransferNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
@@ -26,6 +27,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TransferNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleTransferNotFound(TransferNotFoundException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", ex.getMessage());
+        return body;
+    }
+
+    @ExceptionHandler(TransferCancellationException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public Map<String, String> handleTransferCancellation(TransferCancellationException ex) {
         Map<String, String> body = new HashMap<>();
         body.put("error", ex.getMessage());
         return body;
