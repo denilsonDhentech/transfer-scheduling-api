@@ -4,6 +4,7 @@ import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.domain.TransferStatus;
 import org.dhentech.domain.exception.NoApplicableFeeException;
+import org.dhentech.domain.exception.TransferCancellationException;
 import org.dhentech.domain.exception.TransferNotFoundException;
 import org.dhentech.infrastructure.entity.TransferEntity;
 import org.dhentech.infrastructure.repository.TransferRepository;
@@ -120,6 +121,43 @@ class TransferServiceTest {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(TransferNotFoundException.class, () -> service.findById(99L));
+    }
+
+    @Test
+    void shouldCancelPendingTransferWithFutureDate() {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        service.cancel(1L);
+
+        assertEquals(TransferStatus.CANCELLED, entity.getStatus());
+        verify(repository, times(1)).save(entity);
+    }
+
+    @Test
+    void shouldThrowWhenCancellingAlreadyCancelledTransfer() {
+        TransferEntity entity = buildEntity(1L, new BigDecimal("12.00"));
+        entity.cancel();
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        assertThrows(TransferCancellationException.class, () -> service.cancel(1L));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenCancellingTransferAfterExecutionDate() {
+        TransferEntity entity = buildEntityWithDate(1L, new BigDecimal("12.00"), LocalDate.now());
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        assertThrows(TransferCancellationException.class, () -> service.cancel(1L));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowTransferNotFoundWhenCancellingNonExistentTransfer() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TransferNotFoundException.class, () -> service.cancel(99L));
     }
 
     @Test
