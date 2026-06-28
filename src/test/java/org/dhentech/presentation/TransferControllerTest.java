@@ -140,6 +140,43 @@ class TransferControllerTest {
     }
 
     @Test
+    void shouldSimulateTransferAndReturnFeeAndDays() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
+
+        mockMvc.perform(post("/transfers/simulate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fee").value(12.0))
+                .andExpect(jsonPath("$.days").value(5));
+    }
+
+    @Test
+    void shouldReturn400WhenSimulatingWithDateInThePast() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().minusDays(1));
+
+        mockMvc.perform(post("/transfers/simulate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void shouldReturn400WhenSimulatingWithDateExceedingFiftyDays() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(51));
+
+        mockMvc.perform(post("/transfers/simulate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
     void shouldCancelTransferAndReturn204() throws Exception {
         TransferRequestDto request = buildRequest("1234567890", "0987654321",
                 new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
