@@ -25,6 +25,11 @@ public class TransferController {
         return service.schedule(request);
     }
 
+    @GetMapping("/{id}")
+    public TransferResponseDto findById(@PathVariable Long id) {
+        return service.findById(id);
+    }
+
     @GetMapping
     public List<TransferResponseDto> findAll() {
         return service.findAll();

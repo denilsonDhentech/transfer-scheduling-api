@@ -100,6 +100,33 @@ class TransferControllerTest {
     }
 
     @Test
+    void shouldReturnTransferWhenGetById() throws Exception {
+        TransferRequestDto request = buildRequest("1234567890", "0987654321",
+                new BigDecimal("1000.00"), LocalDate.now().plusDays(5));
+        String body = objectMapper.writeValueAsString(request);
+
+        String response = mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn().getResponse().getContentAsString();
+
+        Long id = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(get("/transfers/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.sourceAccount").value("1234567890"))
+                .andExpect(jsonPath("$.fee").value(12.0));
+    }
+
+    @Test
+    void shouldReturn404WhenTransferNotFound() throws Exception {
+        mockMvc.perform(get("/transfers/{id}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
     void shouldReturnEmptyListWhenNoTransfersScheduled() throws Exception {
         mockMvc.perform(get("/transfers"))
                 .andExpect(status().isOk())
