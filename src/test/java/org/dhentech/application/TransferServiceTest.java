@@ -2,6 +2,7 @@ package org.dhentech.application;
 
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
+import org.dhentech.application.dto.FeeSimulationResponseDto;
 import org.dhentech.domain.TransferStatus;
 import org.dhentech.domain.exception.NoApplicableFeeException;
 import org.dhentech.domain.exception.TransferCancellationException;
@@ -121,6 +122,35 @@ class TransferServiceTest {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(TransferNotFoundException.class, () -> service.findById(99L));
+    }
+
+    @Test
+    void shouldSimulateAndReturnFeeAndDaysWithoutPersisting() {
+        setFieldSilently(request, "transferDate", LocalDate.now().plusDays(5));
+
+        FeeSimulationResponseDto response = service.simulate(request);
+
+        assertEquals(new BigDecimal("12.00"), response.getFee());
+        assertEquals(5L, response.getDays());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldSimulateZeroDayTransferWithFixedFeeAndPercent() {
+        setFieldSilently(request, "transferDate", LocalDate.now());
+
+        FeeSimulationResponseDto response = service.simulate(request);
+
+        assertEquals(new BigDecimal("28.00"), response.getFee());
+        assertEquals(0L, response.getDays());
+    }
+
+    @Test
+    void shouldThrowWhenSimulatingWithInvalidDate() {
+        setFieldSilently(request, "transferDate", LocalDate.now().plusDays(51));
+
+        assertThrows(NoApplicableFeeException.class, () -> service.simulate(request));
+        verify(repository, never()).save(any());
     }
 
     @Test

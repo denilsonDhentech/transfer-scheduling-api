@@ -1,5 +1,6 @@
 package org.dhentech.application;
 
+import org.dhentech.application.dto.FeeSimulationResponseDto;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.dhentech.domain.FeeCalculator;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,13 @@ public class TransferService {
         return repository.findById(id)
                 .map(TransferResponseDto::from)
                 .orElseThrow(() -> new TransferNotFoundException(id));
+    }
+
+    public FeeSimulationResponseDto simulate(TransferRequestDto request) {
+        LocalDate schedulingDate = LocalDate.now();
+        BigDecimal fee = feeCalculator.calculate(request.getAmount(), schedulingDate, request.getTransferDate());
+        long days = ChronoUnit.DAYS.between(schedulingDate, request.getTransferDate());
+        return new FeeSimulationResponseDto(fee, days);
     }
 
     public void cancel(Long id) {

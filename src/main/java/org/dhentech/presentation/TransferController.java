@@ -1,6 +1,7 @@
 package org.dhentech.presentation;
 
 import org.dhentech.application.TransferService;
+import org.dhentech.application.dto.FeeSimulationResponseDto;
 import org.dhentech.application.dto.TransferRequestDto;
 import org.dhentech.application.dto.TransferResponseDto;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,11 @@ public class TransferController {
     @ResponseStatus(HttpStatus.CREATED)
     public TransferResponseDto schedule(@Valid @RequestBody TransferRequestDto request) {
         return service.schedule(request);
+    }
+
+    @PostMapping("/simulate")
+    public FeeSimulationResponseDto simulate(@Valid @RequestBody TransferRequestDto request) {
+        return service.simulate(request);
     }
 
     @GetMapping("/{id}")
